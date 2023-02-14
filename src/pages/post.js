@@ -2,13 +2,14 @@ import { auth, db } from "utils/firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Router, useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
 
 export default function Post() {
     // get User info
     const [user, loading] = useAuthState(auth);
-    const route = useRouter()
+    const route = useRouter();
+    const routeData = route.query;
     //Form state
     const [post, setPost] = useState({description: ""});
 
@@ -28,27 +29,66 @@ export default function Post() {
             toast.clearWaitingQueue();
             return;
         } else if (post.description.length > 300) {
-            toast.error('Description is over 300 characters!');
+            toast.error('Description is over 300 characters!', {
+                position: toast.POSITION.TOP_CENTER,
+                autoClose: 1500,
+            });
+            toast.clearWaitingQueue();
             return;
         }
 
-        // Make a new post
-        const collectionRef = collection(db, 'posts');
-        await addDoc(collectionRef, {...post,
-                                    timeStamp: serverTimestamp(),
-                                    user: user.uid,
-                                    avatar: user.photoURL,
-                                    })
-    setPost({description:""});
-    return route.push('./');
-    };
+
+   
+
     
 
+        // Make a new post
+        if (post?.hasOwnProperty('id')) {
+            const docRef = doc(db, 'posts', post.id);
+            const updatedPost = {...post, timestamp: serverTimestamp()};
+            await updateDoc(docRef, updatedPost);
+            toast.success('Your post is succesfully edited!', {
+                position: toast.POSITION.TOP_CENTER,
+                autoClose: 1500,
+            });
+            toast.clearWaitingQueue
+            return route.push('/');
+        } else {
+            const collectionRef = collection(db, 'posts');
+            await addDoc(collectionRef, {...post,
+                                            timestamp: serverTimestamp(),
+                                            user: user.uid,
+                                            avatar: user.photoURL,
+                                            username: user.displayName,
+                                            })
+            setPost({description:""});
+            toast.success('Post is succesfully published!', {
+                position: toast.POSITION.TOP_CENTER,
+                autoClose: 1500,
+            })
+            return route.push('/');
+        }
+
+    };
+    
+    // Check our user
+    const checkUser = async () => {
+        if(loading) return;
+        if (!user) route.push("/auth/login");
+        if (routeData.id) {
+            setPost({description: routeData.description,
+                    id: routeData.id})
+        }
+    };
+    
+    useEffect(() => {
+        checkUser();
+    },[user,loading]);
 
     return (
         <div className="my-20 p-20 shadow-lg rounded-lg max-w-md mx-auto">
             <form onSubmit={submitPost}>
-                <h1 className="text-2xl font-bold">Create a new Post</h1>
+                <h1 className="text-2xl font-bold">{post.hasOwnProperty('id') ? "Edit your Post" : "Create a new Post"}</h1>
                 <div className="py-2"> 
                     <h3 className="text-lg font-medium py-2">Description</h3>
                     <textarea onChange={(e) => setPost({...post, description: e.target.value})} value={post.description} className="bg-gray-800 h-48 w-full text-white"></textarea>
