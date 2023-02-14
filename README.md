@@ -1,6 +1,6 @@
 # Next.js Twattar Application
 
 ## Used Technologies:
---> Next.js
--->Tailwind.css
---> Firebase
+--> Next.js \n
+-->Tailwind.css \n
+--> Firebase \n
